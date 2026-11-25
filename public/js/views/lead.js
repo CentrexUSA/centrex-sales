@@ -2,15 +2,15 @@
 import { h, replace, fmtDate, fmtWhen, isISODate, norm, externalLink, telHref, mailHref,
   bindDraft, clearDraft, hasDraft, readForm } from '../dom.js';
 import { get, patch, post } from '../api.js';
-import { state, loadLeads, statuses, canClaim, canRelease, canEditDetails, canPickOwner,
+import { state, loadLeads, statuses, canClaim, canRelease, canEditDetails, canEditBond, canPickOwner,
   isUnassigned, ownerLabel, upsertLead, invalidate } from '../state.js';
-import { statusChip, fitChip, dueLine, loadingView, errorView, emptyState, button, linkButton, field, textInput,
+import { statusChip, fitChip, bondChip, dueLine, loadingView, errorView, emptyState, button, linkButton, field, textInput,
   textArea, select, dateField, formError, withSaving, showFormError, toast } from '../ui.js';
 import { buildLogForm } from '../logform.js';
 
 const FACTS = [
   ['type', 'Type'], ['value', 'Value'], ['size', 'Size'], ['stage', 'Stage'], ['opening', 'Opening'],
-  ['gc', 'General contractor'], ['architect', 'Architect'], ['whyFits', 'Why it fits'],
+  ['gc', 'General contractor'], ['architect', 'Architect'], ['bondRequired', 'Bond required'], ['whyFits', 'Why it fits'],
   ['nativeNote', 'Native preference note'], ['source', 'Source'], ['notes', 'Notes'],
   ['firstSeen', 'First seen'], ['lastChecked', 'Last checked'],
 ];
@@ -20,7 +20,7 @@ const DETAIL_FIELDS = [
   ['project', 'Project', 'text'], ['owner', 'Customer', 'text'], ['status', 'Status', 'status'], ['fit', 'Fit', 'fit'],
   ['location', 'City', 'text'], ['state', 'State', 'text'], ['type', 'Type', 'text'], ['value', 'Value', 'text'],
   ['size', 'Size', 'text'], ['opening', 'Opening', 'text'], ['gc', 'General contractor', 'text'],
-  ['architect', 'Architect', 'text'], ['stage', 'Stage', 'long'], ['whyFits', 'Why it fits', 'long'],
+  ['architect', 'Architect', 'text'], ['bondRequired', 'Bond required', 'bond'], ['stage', 'Stage', 'long'], ['whyFits', 'Why it fits', 'long'],
   ['nativeNote', 'Native preference note', 'long'], ['source', 'Source link', 'url'],
   ['nextStep', 'Next step', 'long'], ['nextOwner', 'Owner of next step', 'owner'], ['nextDate', 'Next step date', 'date'],
   ['notes', 'Notes', 'long'], ['firstSeen', 'First seen', 'date'], ['lastChecked', 'Last checked', 'text'],
@@ -167,7 +167,7 @@ class LeadPage {
         l.owner ? h('span', { class: 'customer' }, String(l.owner)) : null,
         l.owner && where ? ' · ' : null,
         where || null) : null,
-      h('div', { class: 'chips' }, statusChip(l.status), fitChip(l.fit) || h('span', { class: 'chip chip-none' }, 'Fit not rated')));
+      h('div', { class: 'chips' }, statusChip(l.status), fitChip(l.fit) || h('span', { class: 'chip chip-none' }, 'Fit not rated'), bondChip(l.bondRequired)));
     document.title = `${l.project || 'Lead'} · Centrex Sales`;
   }
 
@@ -206,6 +206,13 @@ class LeadPage {
       statusSel.value = String(l.status);
     }
     const ownerSel = canPickOwner() ? ownerPicker(l.nextOwner) : null;
+    let bondSel = null;
+    if (canEditBond()) {
+      const bv = String(l.bondRequired || '').trim();
+      const bopts = [{ value: '', label: 'Not checked' }, 'Yes', 'No', 'Unknown'];
+      if (bv && !['Yes', 'No', 'Unknown'].includes(bv)) bopts.push(bv);
+      bondSel = select('bondRequired', bopts, bv);
+    }
     const submit = h('button', { type: 'submit', class: 'btn btn-primary' }, 'Save');
     const form = h('form', { class: 'stack', noValidate: true },
       h('h2', { id: 'next-h', class: 'section-title' }, 'Change next step'),
@@ -213,6 +220,7 @@ class LeadPage {
       dateWrap,
       field('Status', statusSel),
       ownerSel ? field('Owner of next step', ownerSel) : null,
+      bondSel ? field('Bond required', bondSel, { hint: 'Does the bid or contract call for a bid, performance or payment bond?' }) : null,
       errorBox,
       h('div', { class: 'form-actions' }, submit,
         button('Cancel', { variant: 'ghost', onClick: () => { clearDraft(key); this.edit.next = false; this.renderNext(); } })));
@@ -222,7 +230,7 @@ class LeadPage {
       e.preventDefault();
       const v = readForm(form);
       if (v.nextDate && !isISODate(v.nextDate)) { showFormError(errorBox, 'The next step date needs to be a real date.'); dateInput.focus(); return; }
-      const keys = ['nextStep', 'nextDate', 'status'].concat(ownerSel ? ['nextOwner'] : []);
+      const keys = ['nextStep', 'nextDate', 'status'].concat(ownerSel ? ['nextOwner'] : [], bondSel ? ['bondRequired'] : []);
       const body = changed(l, v, keys);
       if (!Object.keys(body).length) { clearDraft(key); this.edit.next = false; this.renderNext(); toast('No changes to save.'); return; }
       const r = await withSaving(form, submit, errorBox, () => patch(`/api/lead?id=${encodeURIComponent(this.id)}`, body));
@@ -235,6 +243,7 @@ class LeadPage {
       toast('Next step saved.');
       this.renderHead();
       this.renderNext();
+      if (!this.edit.details) this.renderFacts();
       this.reload();
     });
     return form;
@@ -464,6 +473,10 @@ class LeadPage {
         } else if (kind === 'fit') {
           const opts = [{ value: '', label: 'Not rated' }, 'A', 'B', 'C'];
           if (v.trim() && !['A', 'B', 'C'].includes(v.trim())) opts.push(v.trim());
+          ctl = select(k, opts, v.trim());
+        } else if (kind === 'bond') {
+          const opts = [{ value: '', label: 'Not checked' }, 'Yes', 'No', 'Unknown'];
+          if (v.trim() && !['Yes', 'No', 'Unknown'].includes(v.trim())) opts.push(v.trim());
           ctl = select(k, opts, v.trim());
         } else if (kind === 'owner') {
           ctl = ownerPicker(v);

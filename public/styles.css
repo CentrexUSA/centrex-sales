@@ -177,6 +177,7 @@ body:not(.signed-in) .main { padding-bottom: 32px; }
 .st-watch { background: #f4f2ea; border-color: #d8d2bb; color: #4f4a35; }
 .st-won::before { border-radius: 2px; }
 .chip-fit { background: var(--surface); border-style: dashed; }
+.chip-bond { background: #fbf1df; border-color: #e7cf9f; color: #6a4500; }
 .chip-none { border-style: dotted; color: var(--muted); background: transparent; font-weight: 500; }
 .chip-type { background: var(--surface); }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }

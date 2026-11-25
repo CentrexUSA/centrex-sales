@@ -1,11 +1,11 @@
 // Pipeline: every visible lead, searchable and filterable. Table on desktop, cards on phones.
 import { h, replace, uid, norm, parseISO, daysFrom, isISODate } from '../dom.js';
 import { state, loadLeads, statuses, isManager, isOutside, canAddLead, isUnassigned, ownerLabel } from '../state.js';
-import { leadCard, statusChip, fitChip, dueLine, loadingView, errorView, emptyState, pageHeader, linkButton, button, select } from '../ui.js';
+import { leadCard, statusChip, fitChip, bondChip, dueLine, loadingView, errorView, emptyState, pageHeader, linkButton, button, select } from '../ui.js';
 import { openLogDialog } from '../logform.js';
 
 const FILTER_KEY = 'cx-pipeline-filters';
-const EMPTY = { q: '', status: '', fit: '', owner: '', state: '', due: '', sort: 'date', dir: 1 };
+const EMPTY = { q: '', status: '', fit: '', bond: '', owner: '', state: '', due: '', sort: 'date', dir: 1 };
 
 function loadFilters() {
   try { return Object.assign({}, EMPTY, JSON.parse(sessionStorage.getItem(FILTER_KEY) || '{}')); } catch { return Object.assign({}, EMPTY); }
@@ -22,6 +22,7 @@ export function applyFilters(leads, f, t) {
     if (q && !SEARCH_FIELDS.some((k) => norm(l[k]).includes(q))) return false;
     if (f.status && String(l.status || '').trim() !== f.status) return false;
     if (f.fit === '-' ? String(l.fit || '').trim() : (f.fit && String(l.fit || '').trim() !== f.fit)) return false;
+    if (f.bond === '-' ? String(l.bondRequired || '').trim() : (f.bond && String(l.bondRequired || '').trim() !== f.bond)) return false;
     if (f.owner === '-') { if (!isUnassigned(l)) return false; } else if (f.owner && norm(l.nextOwner) !== norm(f.owner)) return false;
     if (f.state && norm(l.state) !== norm(f.state)) return false;
     if (f.due) {
@@ -79,7 +80,7 @@ function draw(main, data, ctx) {
   const update = () => {
     saveFilters(f);
     const list = sortLeads(applyFilters(data.leads, f, t), f.sort, f.dir);
-    const active = ['q', 'status', 'fit', 'owner', 'state', 'due'].some((k) => f[k]);
+    const active = ['q', 'status', 'fit', 'bond', 'owner', 'state', 'due'].some((k) => f[k]);
     clearBtn.hidden = !active;
     replace(countLine, `${list.length} of ${data.leads.length} lead${data.leads.length === 1 ? '' : 's'}`);
     if (!list.length) {
@@ -109,7 +110,7 @@ function draw(main, data, ctx) {
   const states = [...new Set(data.leads.map((l) => String(l.state || '').trim()).filter(Boolean))].sort();
   const owners = (data.people || []).map((p) => String(p.name || '')).filter(Boolean);
 
-  const activeCount = () => ['status', 'fit', 'owner', 'state', 'due'].filter((k) => f[k]).length;
+  const activeCount = () => ['status', 'fit', 'bond', 'owner', 'state', 'due'].filter((k) => f[k]).length;
   const toggle = h('button', { type: 'button', class: 'btn btn-ghost btn-small filters-toggle', 'aria-expanded': 'false' });
   const setToggle = () => {
     const n = activeCount();
@@ -121,6 +122,7 @@ function draw(main, data, ctx) {
     h('div', { class: 'filter filter-search' }, h('label', { for: searchId }, 'Search'), h('div', { class: 'search-row' }, search, toggle)),
     ctl('Status', 'status', [{ value: '', label: 'Any status' }].concat(statuses())),
     ctl('Fit', 'fit', [{ value: '', label: 'Any fit' }, 'A', 'B', 'C', { value: '-', label: 'Not rated' }]),
+    ctl('Bond required', 'bond', [{ value: '', label: 'Any' }, 'Yes', 'No', 'Unknown', { value: '-', label: 'Not checked' }]),
     isOutside() ? null : ctl('Owner of next step', 'owner', [{ value: '', label: 'Anyone' }]
       .concat(owners.map((o) => ({ value: o, label: state.user && norm(o) === norm(state.user.name) ? `${o} (you)` : o })))
       .concat([{ value: '-', label: 'Unassigned' }])),
@@ -186,7 +188,8 @@ function table(list, f, onSort, onChange) {
         return h('tr', null,
           h('td', { class: 'col-project' },
             h('a', { href: `#/lead/${encodeURIComponent(l.id || '')}` }, String(l.project || '(No project name)')),
-            l.owner ? h('div', { class: 'sub' }, String(l.owner)) : null),
+            l.owner ? h('div', { class: 'sub' }, String(l.owner)) : null,
+            bondChip(l.bondRequired)),
           h('td', null, statusChip(l.status)),
           h('td', null, fitChip(l.fit) || h('span', { class: 'muted' }, '–')),
           h('td', { class: 'col-next' }, String(l.nextStep || '').trim() ? String(l.nextStep) : h('span', { class: 'muted' }, 'None')),

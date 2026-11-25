@@ -16,6 +16,12 @@ export function fitChip(fit) {
   return h('span', { class: 'chip chip-fit', title: `Fit ${f}` }, `Fit ${f}`);
 }
 
+/** Shown only when a bond is required, so these leads stand out in lists. */
+export function bondChip(bondRequired) {
+  if (String(bondRequired || '').trim().toLowerCase() !== 'yes') return null;
+  return h('span', { class: 'chip chip-bond', title: 'This job requires a surety bond' }, 'Bond required');
+}
+
 /** Date with a relative hint; overdue shown in words and colour. */
 export function dueLine(dateStr, opts = {}) {
   const t = today();
@@ -196,6 +202,7 @@ export function leadCard(lead, actions = {}, opts = {}) {
     h('div', { class: 'card-top' },
       statusChip(lead.status),
       fitChip(lead.fit),
+      bondChip(lead.bondRequired),
       showOwner ? h('span', { class: 'card-owner' }, ownerLabel(lead)) : null),
     h('h3', { class: 'card-title' },
       h('a', { href, class: 'card-link' }, String(lead.project || '(No project name)'))),
