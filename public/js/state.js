@@ -21,6 +21,7 @@ export const isOutside = () => role() === 'Outside';
 export const canAddLead = () => isManager() || isSales();
 export const canSeeBids = () => isManager() || isSales();
 export const canEditDetails = () => isManager();
+export const canEditBond = () => isManager() || isSales();
 export const canPickOwner = () => isManager();
 
 export function isMine(lead) {

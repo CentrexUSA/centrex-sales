@@ -24,10 +24,10 @@ The session-signing key is derived, not configured: `sha256("cx-session:" + priv
 
 Row 1 of every tab is a header row. Data starts at row 2. Read with `valueRenderOption=FORMATTED_VALUE`. Dates display as `YYYY-MM-DD`.
 
-**Projects** (A to W), one row per lead. JSON key in brackets.
-A Fit [fit] (A, B, C or blank) · B Status [status] (New, Researching, Contacted, Bidding, Won, Lost, Watch) · C Project [project] · D Owner [owner] (the customer: tribe or business) · E Location [location] · F State [state] · G Type [type] · H Value [value] · I Size [size] · J Stage [stage] · K Opening [opening] · L General contractor [gc] · M Architect [architect] · N Why it fits [whyFits] · O Next step [nextStep] · P Native preference note [nativeNote] · Q Source [source] (URL) · R Owner of next step [nextOwner] (a user's Name, or free text) · S Next step date [nextDate] · T Notes [notes] · U First seen [firstSeen] · V Last checked [lastChecked] · W Lead ID [id] (`L-0001`, ...)
+**Projects** (A to X), one row per lead. JSON key in brackets.
+A Fit [fit] (A, B, C or blank) · B Status [status] (New, Researching, Contacted, Bidding, Won, Lost, Watch) · C Project [project] · D Owner [owner] (the customer: tribe or business) · E Location [location] · F State [state] · G Type [type] · H Value [value] · I Size [size] · J Stage [stage] · K Opening [opening] · L General contractor [gc] · M Architect [architect] · N Why it fits [whyFits] · O Next step [nextStep] · P Native preference note [nativeNote] · Q Source [source] (URL) · R Owner of next step [nextOwner] (a user's Name, or free text) · S Next step date [nextDate] · T Notes [notes] · U First seen [firstSeen] · V Last checked [lastChecked] · W Lead ID [id] (`L-0001`, ...) · X Bond required [bondRequired] (Yes, No, Unknown or blank; blank means not checked)
 
-A separate weekly scan appends rows to Projects with A to V filled and W blank. When the server reads Projects and finds a row with a Project name and no Lead ID, it assigns the next ID (max existing number + 1, zero-padded to 4) and writes it to column W before returning. A row with no Project name is ignored.
+A separate weekly scan appends rows to Projects with A to V filled and W blank (X, Bond required, may be filled or blank). When the server reads Projects and finds a row with a Project name and no Lead ID, it assigns the next ID (max existing number + 1, zero-padded to 4) and writes it to column W before returning. A row with no Project name is ignored.
 
 **Contacts** (A to K): Contact ID [id] (`C-0001`) · Lead ID [leadId] · Name [name] · Title or role [title] · Company [company] · Email [email] · Phone [phone] · Where verified [verifiedAt] (where this contact detail came from) · Notes [notes] · Added by [addedBy] · Added on [addedOn]
 
@@ -62,7 +62,7 @@ A lead is **mine** when `nextOwner` equals my Name (case-insensitive, trimmed). 
 | Role | Sees | May change |
 |---|---|---|
 | Manager | every lead, Open bids | any Projects field on any lead; add leads; assign `nextOwner` to any active user or clear it |
-| Sales | mine + unassigned, Open bids | on visible leads: `status`, `nextStep`, `nextDate`, and may set `nextOwner` to their own Name (claim) or clear it when it is theirs; add leads; add and edit contacts; log activity |
+| Sales | mine + unassigned, Open bids | on visible leads: `status`, `nextStep`, `nextDate`, `bondRequired`, and may set `nextOwner` to their own Name (claim) or clear it when it is theirs; add leads; add and edit contacts; log activity |
 | Outside | mine only; no Open bids | on mine: `status`, `nextStep`, `nextDate`; add and edit contacts; log activity. Cannot add leads or change `nextOwner` |
 
 Contacts and activity for a lead follow that lead's visibility. Asking for a lead you cannot see answers `404 {"error":"not_found"}` (never 403, so existence is not revealed).
@@ -95,8 +95,8 @@ Screens:
 1. **Sign in**: email + access code. Plain errors. If the API answers `not_configured`, say the app is not connected to its data yet and to contact Michael Mason.
 2. **Today** (default after sign-in): my leads grouped as Overdue, Due today, Coming up (next 14 days), No date set; then Unassigned leads I can claim (Sales/Manager). Each card: project, customer, status, next step, date, and a one-tap "Log" button.
 3. **Pipeline**: all visible leads. Search box; filters for status, fit, owner of next step, state. Desktop: table. Phone: cards. Sort by next step date by default. Managers also see a summary strip: count by status, leads with no owner, leads with no next step date, overdue count.
-4. **Lead**: header (project, customer, location, status, fit); "Next step" block (step, owner, date) with quick edit; **Contacts** list with add/edit, `tel:` and `mailto:` links, and where each was verified; **Activity** timeline with a "Log activity" form (type, what happened, new next step, new date, optional new status); **Project facts** (type, value, size, stage, opening, GC, architect, why it fits, native preference note, source link, notes, first seen, last checked). Managers get "Edit details" for every field and an owner picker.
-5. **Add lead** (Manager, Sales): project (required), customer, location, state, type, value, size, stage, GC, architect, source link, next step, next step date, notes.
+4. **Lead**: header (project, customer, location, status, fit); "Next step" block (step, owner, date) with quick edit; **Contacts** list with add/edit, `tel:` and `mailto:` links, and where each was verified; **Activity** timeline with a "Log activity" form (type, what happened, new next step, new date, optional new status); **Project facts** (type, value, size, stage, opening, GC, architect, bond required, why it fits, native preference note, source link, notes, first seen, last checked). Managers get "Edit details" for every field and an owner picker.
+5. **Add lead** (Manager, Sales): project (required), customer, location, state, type, value, size, stage, GC, architect, bond required, source link, next step, next step date, notes.
 6. **Open bids** (Manager, Sales): read-only list sorted by close date, with links.
 
 Rules: treat every value from the API as untrusted text (set `textContent`, never `innerHTML` with data; only allow `http:`/`https:` in links). Show dates as `Mon, Nov 30`. On a 401 from any call, go to the sign-in screen. Show a clear saving state and a clear failure message; never lose what the user typed on a failed save.

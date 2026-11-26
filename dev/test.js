@@ -28,7 +28,8 @@ test('schema: column letters and A1 ranges', () => {
   assert.equal(S.colLetter(0), 'A');
   assert.equal(S.colLetter(22), 'W');
   assert.equal(S.colLetter(26), 'AA');
-  assert.equal(S.lastCol('projects'), 'W');
+  assert.equal(S.lastCol('projects'), 'X');
+  assert.equal(S.colOf('projects', 'bondRequired'), 'X');
   assert.equal(S.lastCol('contacts'), 'K');
   assert.equal(S.lastCol('activity'), 'H');
   assert.equal(S.lastCol('users'), 'E');
@@ -397,7 +398,7 @@ test('sheets store: ID assignment skips a row that changed before the write', as
   const fetch = async (url, init) => {
     // After the first full read, someone fills the scan row's ID by hand.
     const res = await realFetch(url, init);
-    if (first && url.includes('/values/Projects!A2%3AW')) { first = false; fake.tabs.Projects[3][22] = 'L-0050'; }
+    if (first && url.includes('/values/Projects!A2%3AX')) { first = false; fake.tabs.Projects[3][22] = 'L-0050'; }
     return res;
   };
   const client = G.createGoogleClient({ credentials: TEST_CREDS, sheetId: SHEET_ID, fetch });
@@ -467,7 +468,8 @@ test('sheets store: appendLead encodes text and dates and uses the next ID', asy
   assert.equal(lead.id, 'L-0009'); // L-0008 was assigned to the scan row first
   const app = fake.writes[fake.writes.length - 1];
   const row = app.values[0];
-  assert.equal(row.length, 23);
+  assert.equal(row.length, 24);
+  assert.equal(row[23], '');
   assert.equal(row[2], "'+1 Tower");
   assert.equal(row[1], "'New");
   assert.equal(row[7], "'1200");
@@ -848,7 +850,7 @@ test('api: GET /api/leads visibility per role', async () => {
   assert.deepEqual(o.json.people, [{ name: 'Olivia Park', role: 'Outside' }]);
   assertNoSecrets(o, USERS.outside.email);
   assert.ok(!o.text.includes('Lakeview'));
-  for (const l of o.json.leads) assert.equal(Object.keys(l).length, 23);
+  for (const l of o.json.leads) assert.equal(Object.keys(l).length, 24);
 });
 
 test('api: GET /api/lead visibility, 404 for hidden, missing and malformed IDs', async () => {
@@ -973,7 +975,18 @@ test('api: PATCH /api/lead for Manager and value validation', async () => {
   assert.equal((await call('GET', '/api/lead?id=L-0007', { cookie: sessions.sales })).status, 404);
 
   assert.equal((await patch('L-0007', { nextOwner: '' })).json.lead.nextOwner, '');
+
   assert.equal(mockData().activity.at(-1).note, 'Cleared owner of next step');
+  const bond = await patch('L-0007', { bondRequired: 'yes' });
+  assert.equal(bond.status, 200, bond.text);
+  assert.equal(bond.json.lead.bondRequired, 'Yes');
+  assert.equal(mockData().activity.at(-1).note, 'Changed bond required to Yes');
+  assert.equal((await patch('L-0007', { bondRequired: '' })).json.lead.bondRequired, '');
+  assert.equal((await patch('L-0007', { bondRequired: 'Maybe' })).status, 400);
+  const bySales = await call('PATCH', '/api/lead?id=L-0001', { cookie: sessions.sales, body: { bondRequired: 'No' } });
+  assert.equal(bySales.status, 200, bySales.text);
+  assert.equal(bySales.json.lead.bondRequired, 'No');
+  assert.equal((await call('PATCH', '/api/lead?id=L-0003', { cookie: sessions.outside, body: { bondRequired: 'Yes' } })).status, 400);
 
   const invalid = [
     { nextOwner: 'Pat Former' }, { nextOwner: 'Someone Else' }, { status: 'Bogus' }, { status: '' },
@@ -1014,11 +1027,13 @@ test('api: POST /api/leads', async () => {
   assert.equal(s.json.lead.nextOwner, 'Sam Ortiz');
   assert.equal(s.json.lead.firstSeen, chicagoToday());
   assert.equal(s.json.lead.lastChecked, '');
+  assert.equal(s.json.lead.bondRequired, '');
   const act = mockData().activity.at(-1);
   assert.deepEqual([act.type, act.note, act.leadId, act.by, act.project], ['Update', 'Lead added', 'L-0012', 'Sam Ortiz', 'New hotel']);
 
-  const s2 = await post('sales', { project: 'Open lead', nextOwner: '' });
+  const s2 = await post('sales', { project: 'Open lead', nextOwner: '', bondRequired: 'Unknown' });
   assert.equal(s2.status, 201);
+  assert.equal(s2.json.lead.bondRequired, 'Unknown');
   assert.equal(s2.json.lead.nextOwner, '');
   for (const body of [{ project: 'X', nextOwner: 'Olivia Park' }, { project: 'X', nextOwner: 'Free text' }, { project: 'X', id: 'L-0500' }, { project: 'X', firstSeen: '2020-01-01' }, { project: 'X', lastChecked: 'x' }, { project: 'X', other: 1 }]) {
     const x = await post('sales', body);

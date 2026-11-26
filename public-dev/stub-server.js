@@ -29,7 +29,7 @@ const LONG = new Set(['notes', 'note', 'stage', 'whyFits']);
 const DATE_FIELDS = new Set(['nextDate', 'firstSeen', 'addedOn']);
 const LEAD_FIELDS = ['fit', 'status', 'project', 'owner', 'location', 'state', 'type', 'value', 'size', 'stage',
   'opening', 'gc', 'architect', 'whyFits', 'nextStep', 'nativeNote', 'source', 'nextOwner', 'nextDate', 'notes',
-  'firstSeen', 'lastChecked', 'id'];
+  'firstSeen', 'lastChecked', 'id', 'bondRequired'];
 const CONTACT_FIELDS = ['name', 'title', 'company', 'email', 'phone', 'verifiedAt', 'notes'];
 
 let modes = { fail: 0, notConfigured: false, delay: 0 };

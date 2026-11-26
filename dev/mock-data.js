@@ -33,7 +33,7 @@ function createSeed() {
     fit: '', status: 'New', project: '', owner: '', location: '', state: '', type: '', value: '',
     size: '', stage: '', opening: '', gc: '', architect: '', whyFits: '', nextStep: '',
     nativeNote: '', source: '', nextOwner: '', nextDate: '', notes: '', firstSeen: d(-30),
-    lastChecked: d(-2), id: '', ...o,
+    lastChecked: d(-2), id: '', bondRequired: '', ...o,
   });
 
   const leads = [

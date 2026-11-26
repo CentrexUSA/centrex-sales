@@ -68,6 +68,7 @@ const ADD_FIELDS = [
   ['stage', 'Stage', { long: true, hint: 'Where the project stands: planning, design, bidding, under construction.' }],
   ['gc', 'General contractor', {}],
   ['architect', 'Architect', {}],
+  ['bondRequired', 'Bond required', { bond: true, hint: 'Does the bid or contract call for a bid, performance or payment bond?' }],
   ['source', 'Source link', { attrs: { inputmode: 'url', placeholder: 'https://…' }, hint: 'Where you heard about it.' }],
 ];
 
@@ -90,7 +91,8 @@ export async function renderAddLead(main, ctx) {
   const submit = h('button', { type: 'submit', class: 'btn btn-primary' }, 'Add lead');
 
   const ctl = ([k, label, o]) => {
-    const c = o.long ? textArea(k, '', { rows: 3 }) : textInput(k, '', o.attrs || {});
+    const c = o.bond ? select(k, [{ value: '', label: 'Not checked' }, 'Yes', 'No', 'Unknown'], '')
+      : o.long ? textArea(k, '', { rows: 3 }) : textInput(k, '', o.attrs || {});
     inputs[k] = c;
     return field(label, c, { required: o.required, hint: o.hint, class: o.long || k === 'project' || k === 'source' ? 'span-2' : '' });
   };
